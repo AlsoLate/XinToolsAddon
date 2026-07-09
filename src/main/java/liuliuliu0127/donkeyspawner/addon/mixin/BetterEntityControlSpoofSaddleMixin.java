@@ -2,6 +2,8 @@ package liuliuliu0127.donkeyspawner.addon.mixin;
 
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import liuliuliu0127.donkeyspawner.addon.modules.BetterEntityControl;
+import liuliuliu0127.donkeyspawner.addon.utils.MountTeleportUtil;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,7 +16,7 @@ public abstract class BetterEntityControlSpoofSaddleMixin {
     @ModifyReturnValue(method = "isSaddled", at = @At("RETURN"))  // 用 isSaddled！
     private boolean overrideSaddleCheck(boolean original) {
         BetterEntityControl bec = Modules.get().get(BetterEntityControl.class);
-        if (bec != null && bec.isActive() && bec.spoofSaddle()) {
+        if (MountTeleportUtil.shouldSpoofSaddle((Entity) (Object) this) || (bec != null && bec.isActive() && bec.spoofSaddle())) {
             return true;
         }
         return original;

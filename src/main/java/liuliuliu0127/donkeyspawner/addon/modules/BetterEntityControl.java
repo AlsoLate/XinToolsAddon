@@ -24,6 +24,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket;
+//import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket;
 //import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 //import net.minecraft.world.item.Item;
@@ -53,6 +54,7 @@ import java.util.stream.Collectors;
 import java.util.Comparator;
 
 import liuliuliu0127.donkeyspawner.addon.DonkeySpawnerAddon;
+import liuliuliu0127.donkeyspawner.addon.utils.MountTeleportUtil;
 //import liuliuliu0127.donkeyspawner.addon.modules.BetterEntityControl.ActivationMode;
 //import liuliuliu0127.donkeyspawner.addon.modules.BetterEntityControl.ActivationMode;
 //import liuliuliu0127.donkeyspawner.addon.modules.BetterEntityControl.ControlMode;
@@ -414,6 +416,10 @@ public class BetterEntityControl extends Module {
 
     private int waterSlotBackup = -1;   // 记录桶原本的背包槽位（用于归还）
 
+
+    public Vec3 pendingTpTarget = null; // 待 TP 的目标位置
+    public boolean isTeleporting = false;   // 正在 TP 标志
+
     public void setForcePause(boolean pause) {
         this.forcePause = pause;
         if (!pause) this.customMotion = null;
@@ -564,6 +570,26 @@ public class BetterEntityControl extends Module {
     private void onEntityMove(EntityMoveEvent event) {
         Entity entity = event.entity;
         if (entity.getControllingPassenger() != mc.player || !entities.get().contains(entity.getType())) return;
+        // ---- 优先处理 TP 请求 ----
+        if (isTeleporting && pendingTpTarget != null && entity == mc.player.getVehicle()) {
+            Vec3 currentPos = entity.position();
+            Vec3 delta = new Vec3(
+                pendingTpTarget.x - currentPos.x,
+                pendingTpTarget.y - currentPos.y,
+                pendingTpTarget.z - currentPos.z
+            );
+            // 应用位移（一次性移动整个距离）
+            ((IVec3d) event.movement).meteor$set(delta.x, delta.y, delta.z);
+            // 标记已移动
+            entity.hurtMarked = true;
+
+            // 重置 TP 状态
+            isTeleporting = false;
+            pendingTpTarget = null;
+            MountTeleportUtil.onTeleportConsumed(entity);
+            return; // 跳过后续移动控制
+        }
+
         if (forcePause) {//矛光环要用----------------------
             if (customMotion != null) {
                 // 应用外部传入的移动向量
