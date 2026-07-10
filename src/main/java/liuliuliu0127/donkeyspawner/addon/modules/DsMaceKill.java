@@ -14,6 +14,7 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.combat.KillAura;
+import meteordevelopment.meteorclient.systems.modules.movement.NoFall;
 import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
@@ -241,6 +242,8 @@ public class DsMaceKill extends Module {
     private boolean fastFallTimerOverridden;
     private boolean waitingForObviousFall;
     private boolean maceAttackPending;
+    private boolean restoreNoFallAfterMaceSpoof;
+    private NoFall suppressedNoFall;
 
     public DsMaceKill() {
         super(DonkeySpawnerAddon.CATEGORY, "Ds Mace Kill", "Combines falling MaceSpoof combat with the MaceExloit attack loop.");
@@ -257,6 +260,8 @@ public class DsMaceKill extends Module {
         fastFallTimerOverridden = false;
         waitingForObviousFall = false;
         maceAttackPending = false;
+        restoreNoFallAfterMaceSpoof = false;
+        suppressedNoFall = null;
 
         killAura = null;
         restoreKillAura = false;
@@ -270,6 +275,8 @@ public class DsMaceKill extends Module {
         resetFastFallTimer();
         waitingForObviousFall = false;
         maceAttackPending = false;
+        restoreNoFallAfterMaceSpoofMode();
+        suppressedNoFall = null;
 
         if (restoreKillAura && killAura != null && !killAura.isActive()) killAura.enable();
         restoreKillAura = false;
@@ -286,18 +293,24 @@ public class DsMaceKill extends Module {
 
         switch (mode) {
             case WaitingForElytra -> {
+                restoreNoFallAfterMaceSpoofMode();
             }
             case WaitingForLanding -> {
                 resetFastFallTimer();
+                restoreNoFallAfterMaceSpoofMode();
                 if (mc.player.onGround()) {
                     mode = RunMode.MaceExloit;
                     lastCycleAt = 0;
                     resetMaceExploitCycle();
                 }
             }
-            case MaceSpoof -> tickMaceSpoof();
+            case MaceSpoof -> {
+                suppressNoFallForMaceSpoofMode();
+                tickMaceSpoof();
+            }
             case MaceExloit -> {
                 resetFastFallTimer();
+                restoreNoFallAfterMaceSpoofMode();
                 tickMaceExploit();
             }
         }
@@ -365,11 +378,10 @@ public class DsMaceKill extends Module {
         else resetFastFallTimer();
 
         if (autoAttack.get()
-            && !maceAttackPending
             && target != null
             && mc.player.fallDistance >= spoofMinFallDistance.get()
             && hasElapsed(lastAttackAt, attackDelay.get())) {
-            attackWithMace(target);
+            attackWithMaceImmediately(target);
         }
 
         if (!spoofSentThisFall
@@ -476,7 +488,7 @@ public class DsMaceKill extends Module {
             cycleStartedAt = now;
             cycleTarget = target;
 
-            if (useWindCharge.get()) fireWindCharge();
+            if (useWindCharge.get() && InvUtils.find(Items.WIND_CHARGE).found()) fireWindCharge();
             return;
         }
 
@@ -492,7 +504,7 @@ public class DsMaceKill extends Module {
                 fakeHeightSent = true;
             }
 
-            if (autoAttack.get() && isValidTarget(cycleTarget, attackRange.get())) attackWithMace(cycleTarget);
+            if (autoAttack.get() && isValidTarget(cycleTarget, attackRange.get())) attackWithMaceRotated(cycleTarget);
             lastCycleAt = now;
             resetMaceExploitCycle();
         }
@@ -505,7 +517,30 @@ public class DsMaceKill extends Module {
         }));
     }
 
-    private void attackWithMace(Entity target) {
+    private void attackWithMaceImmediately(Entity target) {
+        if (!isValidTarget(target, attackRange.get()) || !InvUtils.find(Items.MACE).found()) return;
+
+        withMainHandItem(Items.MACE, () -> performMaceAttack(target));
+    }
+
+    private void suppressNoFallForMaceSpoofMode() {
+        NoFall noFall = Modules.get().get(NoFall.class);
+        if (noFall == null || !noFall.isActive()) return;
+
+        suppressedNoFall = noFall;
+        restoreNoFallAfterMaceSpoof = true;
+        noFall.disable();
+    }
+
+    private void restoreNoFallAfterMaceSpoofMode() {
+        if (!restoreNoFallAfterMaceSpoof) return;
+
+        if (suppressedNoFall != null && !suppressedNoFall.isActive()) suppressedNoFall.enable();
+        restoreNoFallAfterMaceSpoof = false;
+        suppressedNoFall = null;
+    }
+
+    private void attackWithMaceRotated(Entity target) {
         if (maceAttackPending || !isValidTarget(target, attackRange.get()) || !InvUtils.find(Items.MACE).found()) return;
 
         maceAttackPending = true;
@@ -514,17 +549,20 @@ public class DsMaceKill extends Module {
                 try {
                     if (!isActive()) return;
 
-                    withMainHandItem(Items.MACE, () -> {
-                        if (!isValidTarget(target, attackRange.get())) return;
-                        mc.gameMode.attack(mc.player, target);
-                        mc.player.swing(InteractionHand.MAIN_HAND);
-                        lastAttackAt = System.currentTimeMillis();
-                    });
+                    withMainHandItem(Items.MACE, () -> performMaceAttack(target));
                 } finally {
                     maceAttackPending = false;
                 }
             }
         );
+    }
+
+    private void performMaceAttack(Entity target) {
+        if (!isValidTarget(target, attackRange.get())) return;
+
+        mc.gameMode.attack(mc.player, target);
+        mc.player.swing(InteractionHand.MAIN_HAND);
+        lastAttackAt = System.currentTimeMillis();
     }
 
     private boolean withMainHandItem(Item item, Runnable action) {
