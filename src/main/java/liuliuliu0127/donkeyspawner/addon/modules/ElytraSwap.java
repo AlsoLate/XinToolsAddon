@@ -5,7 +5,6 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.movement.Flight;
-import meteordevelopment.meteorclient.systems.modules.render.Freecam;
 import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
@@ -416,6 +415,18 @@ public class ElytraSwap extends Module {
 
     public void requestChestplateSwap() {
         pendingChestUnlock = true;
+    }
+
+    public boolean swapToChestplateImmediately() {
+        if (mc.player == null || mc.player.getInventory() == null || mc.player.containerMenu == null) return false;
+
+        pendingChestUnlock = false;
+        setAutoArmorIgnoreElytra(false);
+        if (mc.player.isFallFlying()) mc.player.stopFallFlying();
+
+        ItemStack currentChest = mc.player.getItemBySlot(EquipmentSlot.CHEST);
+        if (!currentChest.has(DataComponents.GLIDER)) return isChestplate(currentChest);
+        return switchToChestplate();
     }
 
     public void setForceDisableInfElytra(boolean disable) {

@@ -56,6 +56,16 @@ public class DsMaceKill extends Module {
         .build()
     );
 
+    private final Setting<Double> elytraExitFallSpeed = sgGeneral.add(new DoubleSetting.Builder()
+        .name("elytra-exit-fall-speed")
+        .description("Downward speed required before starting after ElytraFly is forcibly disabled during flight.")
+        .defaultValue(0.1)
+        .range(0.01, 2.0)
+        .sliderRange(0.01, 1.0)
+        .visible(autoDisableElytraFly::get)
+        .build()
+    );
+
     private final Setting<Boolean> autoAttack = sgCombat.add(new BoolSetting.Builder()
         .name("auto-attack")
         .description("Automatically attacks the closest selected entity.")
@@ -211,6 +221,7 @@ public class DsMaceKill extends Module {
     private KillAura killAura;
     private boolean restoreKillAura;
     private boolean fastFallTimerOverridden;
+    private boolean waitingForObviousFall;
 
     public DsMaceKill() {
         super(DonkeySpawnerAddon.CATEGORY, "Ds Mace Kill", "Combines falling MaceSpoof combat with the MaceExloit attack loop.");
@@ -225,6 +236,7 @@ public class DsMaceKill extends Module {
         lastCycleAt = 0;
         lastAttackAt = 0;
         fastFallTimerOverridden = false;
+        waitingForObviousFall = false;
 
         killAura = null;
         restoreKillAura = false;
@@ -236,6 +248,7 @@ public class DsMaceKill extends Module {
         resetMaceExploitCycle();
         spoofSentThisFall = false;
         resetFastFallTimer();
+        waitingForObviousFall = false;
 
         if (restoreKillAura && killAura != null && !killAura.isActive()) killAura.enable();
         restoreKillAura = false;
@@ -273,7 +286,13 @@ public class DsMaceKill extends Module {
         if (!autoDisableElytraFly.get()) return;
 
         ElytraFly elytraFly = Modules.get().get(ElytraFly.class);
-        if (elytraFly != null && elytraFly.isActive()) elytraFly.disable();
+        if (elytraFly == null || !elytraFly.isActive()) return;
+
+        if (mc.player != null && mc.player.isFallFlying()) waitingForObviousFall = true;
+        elytraFly.disable();
+
+        ElytraSwap elytraSwap = Modules.get().get(ElytraSwap.class);
+        if (elytraSwap != null) elytraSwap.swapToChestplateImmediately();
     }
 
     private void tryInitializeFunctionality() {
@@ -283,12 +302,18 @@ public class DsMaceKill extends Module {
             return;
         }
         if (mc.player.isFallFlying()) return;
+        if (waitingForObviousFall && !isObviousFallAfterElytra()) return;
+        waitingForObviousFall = false;
 
         killAura = Modules.get().get(KillAura.class);
         restoreKillAura = autoAttack.get() && killAura != null && killAura.isActive();
         if (restoreKillAura) killAura.disable();
 
         initializeMode();
+    }
+
+    private boolean isObviousFallAfterElytra() {
+        return isNormalFalling() && mc.player.getDeltaMovement().y <= -elytraExitFallSpeed.get();
     }
 
     private void initializeMode() {
@@ -586,7 +611,7 @@ public class DsMaceKill extends Module {
     @Override
     public String getInfoString() {
         return switch (mode) {
-            case WaitingForElytra -> "Waiting Elytra";
+            case WaitingForElytra -> waitingForObviousFall ? "Waiting Fall" : "Waiting Elytra";
             case WaitingForLanding -> "Waiting";
             case MaceSpoof -> "MaceSpoof";
             case MaceExloit -> "MaceExloit";
