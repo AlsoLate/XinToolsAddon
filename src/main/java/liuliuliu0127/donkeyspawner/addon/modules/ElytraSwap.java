@@ -502,7 +502,7 @@ public class ElytraSwap extends Module {
         if (wasElytraFlyActive && !elytraflyActive) {
             //pendingChestUnlock = smartSwapBack.get();
             if (smartSwapBack.get()) {
-                if (swapBackImmediately.get() && swapBackImmediatelyForMace.get() && isHoldingMace()) {
+                if (swapBackImmediately.get() && swapBackImmediatelyForMace.get() && shouldImmediatelySwapForMace()) {
                     // 手持重锤：立即换回胸甲，不等落地/骑乘
                     pendingChestUnlock = false;          // 清除任何等待标志
                     setAutoArmorIgnoreElytra(false);     // 允许 AutoArmor 换回胸甲
@@ -1434,6 +1434,11 @@ public class ElytraSwap extends Module {
     private boolean isHoldingMace() {
         return mc.player.getMainHandItem().getItem() == net.minecraft.world.item.Items.MACE ||
             mc.player.getOffhandItem().getItem() == net.minecraft.world.item.Items.MACE;
+    }
+
+    private boolean shouldImmediatelySwapForMace() {
+        DsMaceKill dsMaceKill = Modules.get().get(DsMaceKill.class);
+        return isHoldingMace() || (dsMaceKill != null && dsMaceKill.isActive());
     }
 
     public boolean isEmergencyActive() {

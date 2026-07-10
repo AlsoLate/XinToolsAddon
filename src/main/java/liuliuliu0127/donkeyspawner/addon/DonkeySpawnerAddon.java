@@ -41,7 +41,7 @@ public class DonkeySpawnerAddon extends MeteorAddon {
         //modules.add(new DonkeySpawnerTMI());
         modules.add(new DeathFreecam());
         modules.add(new MountTP());
-        //modules.add(new MaceSpoof());
+        modules.add(new DsMaceKill());
 
         // Commands
         //Commands.add(new CommandExample());
