@@ -2,6 +2,7 @@ package liuliuliu0127.donkeyspawner.addon.modules;
 
 import liuliuliu0127.donkeyspawner.addon.DonkeySpawnerAddon;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.mixininterface.IClientPlayerInteractionManager;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.EntityTypeListSetting;
@@ -17,6 +18,7 @@ import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
+import meteordevelopment.meteorclient.utils.player.SlotUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.world.InteractionHand;
@@ -170,6 +172,22 @@ public class DsMaceKill extends Module {
         .build()
     );
 
+    private final Setting<Boolean> fastFallOnlyNearTarget = sgMaceSpoof.add(new BoolSetting.Builder()
+        .name("fast-fall-only-near-target")
+        .description("Only uses FastFall when a visible valid target is within attack range and a mace is available.")
+        .defaultValue(true)
+        .visible(() -> fastFallMode.get() != FastFallMode.Disabled)
+        .build()
+    );
+
+    private final Setting<Boolean> fastFallCheckBehindWalls = sgMaceSpoof.add(new BoolSetting.Builder()
+        .name("fast-fall-check-behind-walls")
+        .description("Allows valid targets behind walls to trigger FastFall and be selected by MaceSpoof.")
+        .defaultValue(false)
+        .visible(() -> fastFallMode.get() != FastFallMode.Disabled && fastFallOnlyNearTarget.get())
+        .build()
+    );
+
     private final Setting<Boolean> useWindCharge = sgMaceExploit.add(new BoolSetting.Builder()
         .name("use-wind-charge")
         .description("Fires a wind charge downward at the start of each MaceExloit cycle.")
@@ -222,6 +240,7 @@ public class DsMaceKill extends Module {
     private boolean restoreKillAura;
     private boolean fastFallTimerOverridden;
     private boolean waitingForObviousFall;
+    private boolean maceAttackPending;
 
     public DsMaceKill() {
         super(DonkeySpawnerAddon.CATEGORY, "Ds Mace Kill", "Combines falling MaceSpoof combat with the MaceExloit attack loop.");
@@ -237,6 +256,7 @@ public class DsMaceKill extends Module {
         lastAttackAt = 0;
         fastFallTimerOverridden = false;
         waitingForObviousFall = false;
+        maceAttackPending = false;
 
         killAura = null;
         restoreKillAura = false;
@@ -249,6 +269,7 @@ public class DsMaceKill extends Module {
         spoofSentThisFall = false;
         resetFastFallTimer();
         waitingForObviousFall = false;
+        maceAttackPending = false;
 
         if (restoreKillAura && killAura != null && !killAura.isActive()) killAura.enable();
         restoreKillAura = false;
@@ -338,15 +359,17 @@ public class DsMaceKill extends Module {
             return;
         }
 
-        applyFastFall();
+        boolean requireLineOfSight = fastFallOnlyNearTarget.get() && !fastFallCheckBehindWalls.get();
+        Entity target = findTarget(attackRange.get(), requireLineOfSight);
+        if (!fastFallOnlyNearTarget.get() || canFastFallAttackTarget(target)) applyFastFall();
+        else resetFastFallTimer();
 
-        Entity target = findTarget(attackRange.get());
         if (autoAttack.get()
+            && !maceAttackPending
             && target != null
             && mc.player.fallDistance >= spoofMinFallDistance.get()
             && hasElapsed(lastAttackAt, attackDelay.get())) {
             attackWithMace(target);
-            lastAttackAt = System.currentTimeMillis();
         }
 
         if (!spoofSentThisFall
@@ -355,6 +378,11 @@ public class DsMaceKill extends Module {
             sendMaceSpoofPackets();
             spoofSentThisFall = true;
         }
+    }
+
+    private boolean canFastFallAttackTarget(Entity target) {
+        return target != null
+            && InvUtils.find(Items.MACE).found();
     }
 
     private void applyFastFall() {
@@ -478,14 +506,24 @@ public class DsMaceKill extends Module {
     }
 
     private void attackWithMace(Entity target) {
-        if (!isValidTarget(target, attackRange.get())) return;
+        if (maceAttackPending || !isValidTarget(target, attackRange.get()) || !InvUtils.find(Items.MACE).found()) return;
 
+        maceAttackPending = true;
         Rotations.rotate(Rotations.getYaw(target), Rotations.getPitch(target), () ->
-            withMainHandItem(Items.MACE, () -> {
-                if (!isValidTarget(target, attackRange.get())) return;
-                mc.gameMode.attack(mc.player, target);
-                mc.player.swing(InteractionHand.MAIN_HAND);
-            })
+            {
+                try {
+                    if (!isActive()) return;
+
+                    withMainHandItem(Items.MACE, () -> {
+                        if (!isValidTarget(target, attackRange.get())) return;
+                        mc.gameMode.attack(mc.player, target);
+                        mc.player.swing(InteractionHand.MAIN_HAND);
+                        lastAttackAt = System.currentTimeMillis();
+                    });
+                } finally {
+                    maceAttackPending = false;
+                }
+            }
         );
     }
 
@@ -497,22 +535,35 @@ public class DsMaceKill extends Module {
         int selectedSlot = mc.player.getInventory().getSelectedSlot();
 
         if (sourceSlot >= 0 && sourceSlot <= 8) {
-            InvUtils.swap(sourceSlot, true);
+            if (sourceSlot == selectedSlot) {
+                action.run();
+                return true;
+            }
+
+            selectHotbarSlot(sourceSlot);
             try {
                 action.run();
             } finally {
-                InvUtils.swapBack();
+                selectHotbarSlot(selectedSlot);
             }
             return true;
         }
 
-        InvUtils.move().from(sourceSlot).to(selectedSlot);
+        int sourceSlotId = SlotUtils.indexToId(sourceSlot);
+        if (sourceSlotId < 0) return false;
+
+        InvUtils.quickSwap().fromId(selectedSlot).toId(sourceSlotId);
         try {
             action.run();
         } finally {
-            InvUtils.move().from(selectedSlot).to(sourceSlot);
+            InvUtils.quickSwap().fromId(selectedSlot).toId(sourceSlotId);
         }
         return true;
+    }
+
+    private void selectHotbarSlot(int slot) {
+        mc.player.getInventory().setSelectedSlot(slot);
+        ((IClientPlayerInteractionManager) mc.gameMode).meteor$syncSelected();
     }
 
     private void sendMaceSpoofPackets() {
@@ -547,11 +598,16 @@ public class DsMaceKill extends Module {
     }
 
     private Entity findTarget(double range) {
+        return findTarget(range, false);
+    }
+
+    private Entity findTarget(double range, boolean requireLineOfSight) {
         Entity best = null;
         double bestDistance = range;
 
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (!isValidTarget(entity, range)) continue;
+            if (requireLineOfSight && !mc.player.hasLineOfSight(entity)) continue;
 
             double distance = mc.player.distanceTo(entity);
             if (distance < bestDistance) {
