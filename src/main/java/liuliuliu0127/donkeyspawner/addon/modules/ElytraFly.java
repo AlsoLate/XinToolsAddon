@@ -189,6 +189,7 @@ public class ElytraFly extends Module {
     private final Setting<Boolean> noSuicide;
 
     SettingGroup sgMisc;
+    private final Setting<Boolean> autoDisableMaceKill;
     // --- DEBUG 设置组 ---
     private final Setting<Boolean> debugMode;
     private final Setting<Boolean> debugOutput;
@@ -882,6 +883,11 @@ public class ElytraFly extends Module {
             .defaultValue(true))
             .build());
         this.sgMisc = this.settings.createGroup("Misc");
+        this.autoDisableMaceKill = this.sgMisc.add(new BoolSetting.Builder()
+            .name("Auto Disable Ds Mace Kill")
+            .description("Disables Ds Mace Kill when ElytraFly is enabled.")
+            .defaultValue(true)
+            .build());
         //this.antiCollision = this.sgMisc.add(((BoolSetting.Builder) ((BoolSetting.Builder) (new BoolSetting.Builder())
         //    .name("AntiCollision"))
         //    .defaultValue(false))
@@ -1432,7 +1438,10 @@ public class ElytraFly extends Module {
 
 
     public void onActivate() {
-        
+        if (!this.autoDisableMaceKill.get()) return;
+
+        DsMaceKill dsMaceKill = Modules.get().get(DsMaceKill.class);
+        if (dsMaceKill != null && dsMaceKill.isActive()) dsMaceKill.disable();
     }
 
     public void onDeactivate() {
