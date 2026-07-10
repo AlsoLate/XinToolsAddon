@@ -13,6 +13,7 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.combat.KillAura;
+import meteordevelopment.meteorclient.systems.modules.world.Timer;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
@@ -22,6 +23,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -104,6 +106,53 @@ public class DsMaceKill extends Module {
         .build()
     );
 
+    private final Setting<FastFallMode> fastFallMode = sgMaceSpoof.add(new EnumSetting.Builder<FastFallMode>()
+        .name("fast-fall-mode")
+        .description("Method used to accelerate the MaceSpoof fall.")
+        .defaultValue(FastFallMode.Disabled)
+        .build()
+    );
+
+    private final Setting<Double> fastFallSpeed = sgMaceSpoof.add(new DoubleSetting.Builder()
+        .name("fast-fall-speed")
+        .description("Downward velocity or movement step used by the selected FastFall mode.")
+        .defaultValue(1.0)
+        .range(0.05, 10.0)
+        .sliderRange(0.05, 5.0)
+        .visible(() -> fastFallMode.get().usesSpeed())
+        .build()
+    );
+
+    private final Setting<Double> fastFallMultiplier = sgMaceSpoof.add(new DoubleSetting.Builder()
+        .name("fast-fall-multiplier")
+        .description("Velocity or client timer multiplier used by the selected FastFall mode.")
+        .defaultValue(2.0)
+        .range(1.0, 10.0)
+        .sliderRange(1.0, 5.0)
+        .visible(() -> fastFallMode.get().usesMultiplier())
+        .build()
+    );
+
+    private final Setting<Double> fastFallMaxSpeed = sgMaceSpoof.add(new DoubleSetting.Builder()
+        .name("fast-fall-max-speed")
+        .description("Maximum downward velocity for acceleration and velocity multiplier modes.")
+        .defaultValue(4.0)
+        .range(0.1, 20.0)
+        .sliderRange(0.1, 10.0)
+        .visible(() -> fastFallMode.get() == FastFallMode.AddVelocity || fastFallMode.get() == FastFallMode.MultiplyVelocity)
+        .build()
+    );
+
+    private final Setting<Integer> fastFallPacketCount = sgMaceSpoof.add(new IntSetting.Builder()
+        .name("fast-fall-packet-count")
+        .description("Movement packets sent in one tick by PacketBurst.")
+        .defaultValue(3)
+        .range(1, 20)
+        .sliderRange(1, 10)
+        .visible(() -> fastFallMode.get() == FastFallMode.PacketBurst)
+        .build()
+    );
+
     private final Setting<Boolean> useWindCharge = sgMaceExploit.add(new BoolSetting.Builder()
         .name("use-wind-charge")
         .description("Fires a wind charge downward at the start of each MaceExloit cycle.")
@@ -154,6 +203,7 @@ public class DsMaceKill extends Module {
     private Entity cycleTarget;
     private KillAura killAura;
     private boolean restoreKillAura;
+    private boolean fastFallTimerOverridden;
 
     public DsMaceKill() {
         super(DonkeySpawnerAddon.CATEGORY, "Ds Mace Kill", "Combines falling MaceSpoof combat with the MaceExloit attack loop.");
@@ -166,6 +216,7 @@ public class DsMaceKill extends Module {
         resetMaceExploitCycle();
         lastCycleAt = 0;
         lastAttackAt = 0;
+        fastFallTimerOverridden = false;
 
         killAura = Modules.get().get(KillAura.class);
         restoreKillAura = autoAttack.get() && killAura != null && killAura.isActive();
@@ -178,6 +229,7 @@ public class DsMaceKill extends Module {
     public void onDeactivate() {
         resetMaceExploitCycle();
         spoofSentThisFall = false;
+        resetFastFallTimer();
 
         if (restoreKillAura && killAura != null && !killAura.isActive()) killAura.enable();
         restoreKillAura = false;
@@ -191,6 +243,7 @@ public class DsMaceKill extends Module {
 
         switch (mode) {
             case WaitingForLanding -> {
+                resetFastFallTimer();
                 if (mc.player.onGround()) {
                     mode = RunMode.MaceExloit;
                     lastCycleAt = 0;
@@ -198,7 +251,10 @@ public class DsMaceKill extends Module {
                 }
             }
             case MaceSpoof -> tickMaceSpoof();
-            case MaceExloit -> tickMaceExploit();
+            case MaceExloit -> {
+                resetFastFallTimer();
+                tickMaceExploit();
+            }
         }
     }
 
@@ -215,10 +271,16 @@ public class DsMaceKill extends Module {
     private void tickMaceSpoof() {
         if (mc.player.onGround()) {
             spoofSentThisFall = false;
+            resetFastFallTimer();
             return;
         }
 
-        if (!isNormalFalling()) return;
+        if (!isNormalFalling()) {
+            resetFastFallTimer();
+            return;
+        }
+
+        applyFastFall();
 
         Entity target = findTarget(attackRange.get());
         if (autoAttack.get()
@@ -235,6 +297,81 @@ public class DsMaceKill extends Module {
             sendMaceSpoofPackets();
             spoofSentThisFall = true;
         }
+    }
+
+    private void applyFastFall() {
+        FastFallMode selectedMode = fastFallMode.get();
+        if (selectedMode != FastFallMode.Timer) resetFastFallTimer();
+        if (selectedMode == FastFallMode.Disabled) return;
+
+        double groundDistance = getGroundDistance(Math.max(256.0, spoofLandDistance.get() + fastFallSpeed.get() * fastFallPacketCount.get() + 4.0));
+        double availableDistance = spoofSentThisFall || !Double.isFinite(groundDistance)
+            ? Double.POSITIVE_INFINITY
+            : Math.max(0.0, groundDistance - spoofLandDistance.get());
+
+        Vec3 velocity = mc.player.getDeltaMovement();
+        switch (selectedMode) {
+            case Disabled -> {
+            }
+            case SetVelocity -> setFastFallVelocity(-fastFallSpeed.get(), availableDistance);
+            case AddVelocity -> setFastFallVelocity(
+                Math.max(velocity.y - fastFallSpeed.get(), -fastFallMaxSpeed.get()),
+                availableDistance
+            );
+            case MultiplyVelocity -> setFastFallVelocity(
+                Math.max(velocity.y * fastFallMultiplier.get(), -fastFallMaxSpeed.get()),
+                availableDistance
+            );
+            case ClientMove -> moveDown(fastFallSpeed.get(), availableDistance, false);
+            case PacketMove -> moveDown(fastFallSpeed.get(), availableDistance, true);
+            case PacketBurst -> {
+                double remainingDistance = availableDistance;
+                for (int i = 0; i < fastFallPacketCount.get(); i++) {
+                    double moved = moveDown(fastFallSpeed.get(), remainingDistance, true);
+                    if (moved <= 0.0) break;
+                    if (Double.isFinite(remainingDistance)) remainingDistance = Math.max(0.0, remainingDistance - moved);
+                }
+            }
+            case Timer -> {
+                Timer timer = Modules.get().get(Timer.class);
+                if (timer != null) {
+                    timer.setOverride(fastFallMultiplier.get());
+                    fastFallTimerOverridden = true;
+                }
+            }
+        }
+    }
+
+    private void setFastFallVelocity(double requestedY, double availableDistance) {
+        double y = Double.isFinite(availableDistance)
+            ? Math.max(requestedY, -availableDistance)
+            : requestedY;
+        Vec3 velocity = mc.player.getDeltaMovement();
+        mc.player.setDeltaMovement(velocity.x, y, velocity.z);
+    }
+
+    private double moveDown(double requestedDistance, double availableDistance, boolean sendPacketImmediately) {
+        double distance = Double.isFinite(availableDistance)
+            ? Math.min(requestedDistance, availableDistance)
+            : requestedDistance;
+        if (distance <= 0.0) return 0.0;
+
+        double previousY = mc.player.getY();
+        mc.player.move(MoverType.SELF, new Vec3(0.0, -distance, 0.0));
+        double moved = Math.max(0.0, previousY - mc.player.getY());
+
+        if (sendPacketImmediately && moved > 0.0) {
+            sendPosition(mc.player.getX(), mc.player.getY(), mc.player.getZ());
+        }
+        return moved;
+    }
+
+    private void resetFastFallTimer() {
+        if (!fastFallTimerOverridden) return;
+
+        Timer timer = Modules.get().get(Timer.class);
+        if (timer != null) timer.setOverride(Timer.OFF);
+        fastFallTimerOverridden = false;
     }
 
     private void tickMaceExploit() {
@@ -434,5 +571,32 @@ public class DsMaceKill extends Module {
         Normal,
         ToVoid,
         Rotation
+    }
+
+    private enum FastFallMode {
+        Disabled(false, false),
+        SetVelocity(true, false),
+        AddVelocity(true, false),
+        MultiplyVelocity(false, true),
+        ClientMove(true, false),
+        PacketMove(true, false),
+        PacketBurst(true, false),
+        Timer(false, true);
+
+        private final boolean usesSpeed;
+        private final boolean usesMultiplier;
+
+        FastFallMode(boolean usesSpeed, boolean usesMultiplier) {
+            this.usesSpeed = usesSpeed;
+            this.usesMultiplier = usesMultiplier;
+        }
+
+        private boolean usesSpeed() {
+            return usesSpeed;
+        }
+
+        private boolean usesMultiplier() {
+            return usesMultiplier;
+        }
     }
 }
