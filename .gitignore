@@ -31,3 +31,13 @@ bin/
 # fabric
 
 run/
+
+# reference / analysis projects
+WaveXinAddon/
+
+# build artifacts
+remappedSrc/
+
+# trae workspace artifacts
+.trae-html-share-packages/
+.trae/

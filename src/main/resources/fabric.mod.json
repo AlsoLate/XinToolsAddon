@@ -1,28 +1,27 @@
 {
   "schemaVersion": 1,
-  "id": "donkeyspawner-addon",
+  "id": "xingdu-addon",
   "version": "${version}",
-  "name": "DonkeySpawner Addon",
-  "description": "An addon  for Meteor Client which added some features for servers like 2b2t.xin",
+  "name": "XingduAddon",
+  "description": "An addon for Meteor Client which added some features for servers like 2b2t.xin",
   "authors": [
-    "liuliuliu0127",
-    "Deepseek"
+    "AlsoLate"
   ],
   "contact": {
-    "sources": "https://github.com/liuliuliu0127/DonkeySpawnerAddon"
+    "sources": "https://github.com/AlsoLate/XingduAddon"
   },
-  "icon": "assets/donkeyspawner/icon.png",
+  "icon": "assets/xingdu/icon.png",
   "environment": "client",
   "entrypoints": {
     "meteor": [
-      "liuliuliu0127.donkeyspawner.addon.DonkeySpawnerAddon"
+      "alsolate.xingdu.addon.XingduAddon"
     ]
   },
   "mixins": [
-    "donkeyspawner-addon.mixins.json"
+    "xingdu-addon.mixins.json"
   ],
   "custom": {
-    "meteor-client:color": "225,25,25",
+    "meteor-client:color": "100,180,255",
     "modmenu": {
       "parent": {
         "id": "meteor-client"

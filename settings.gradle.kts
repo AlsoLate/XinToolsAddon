@@ -9,4 +9,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "Meteor-DonkeySpawner-Addon"
+rootProject.name = "XingduAddon"
