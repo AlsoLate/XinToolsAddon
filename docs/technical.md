@@ -1,4 +1,4 @@
-# XingduAddon 技术方案文档
+# XinToolsAddon 技术方案文档
 
 > 记录项目的技术选型、架构说明与具体功能的技术实现方案。开发前必读。
 
@@ -16,14 +16,13 @@
 ## 2. 项目结构
 
 ```
-src/main/java/alsolate/xingdu/addon/
-├── XingduAddon.java            # 主类（MeteorAddon），注册所有模块
+src/main/java/alsolate/xintools/addon/
+├── XinToolsAddon.java          # 主类（MeteorAddon），注册所有模块
 ├── modules/                    # 功能模块（继承 Meteor Module / WaveXinModule）
 │   ├── Automend.java           # 按住投掷经验瓶修装备
 │   ├── PacketEat.java          # 发包进食
-│   ├── BetterPlayerAlarms.java # 玩家报警
+│   ├── PlayerAlarms.java       # 玩家聊天通知（仅消息，不响铃）
 │   ├── XinQueue.java           # 排队自动答题
-│   ├── MeteorTextFix.java      # 文本渲染修复
 │   ├── betterelytrafly/        # 鞘翅飞行（WaveXin 迁入）
 │   ├── sniffernametags/        # 嗅探兽标签（WaveXin 迁入）
 │   ├── autologin/              # 自动登录（WaveXin 迁入）
@@ -33,16 +32,14 @@ src/main/java/alsolate/xingdu/addon/
 ├── i18n/                       # WaveXin 迁入：WaveXinI18n（中英双语）
 ├── gui/                        # WaveXin 迁入：WaveXinEnumDropdown
 └── mixin/                      # Mixin 注入
-    ├── TextRendererMixin.java
-    ├── VanillaTextRendererMixin.java
     ├── MixinPlayerEntity.java          # travel 事件（鞘翅飞行）
     ├── MixinClientPlayerEntity.java    # move 事件（鞘翅飞行）
     └── MixinClientPlayNetworkHandler.java  # 标题/聊天文本事件（自动登录）
 src/main/resources/
 ├── fabric.mod.json             # Fabric mod 元数据
-├── xingdu-addon.mixins.json    # Mixin 配置
+├── xin-tools-addon.mixins.json # Mixin 配置
 ├── questions.json              # XinQueue + AutoLogin 共用题库
-└── assets/xingdu/              # 图标、lang（en_us/zh_cn 双语）等资源
+└── assets/xintools/            # 图标、lang（en_us/zh_cn 双语）等资源
 ```
 
 ## 3. 模块开发模式（Meteor Client）
@@ -59,7 +56,7 @@ public class XxxModule extends Module {
         .build());
 
     public XxxModule() {
-        super(XingduAddon.CATEGORY, "模块名", "描述");
+        super(XinToolsAddon.CATEGORY, "模块名", "描述");
     }
 
     @EventHandler
@@ -75,7 +72,7 @@ public class XxxModule extends Module {
 
 ```java
 public Automend() {
-    super(XingduAddon.CATEGORY, "Automend", "按住模块绑定按键持续向下投掷经验瓶修复装备，松开按键即停止。");
+    super(XinToolsAddon.CATEGORY, "Automend", "按住模块绑定按键持续向下投掷经验瓶修复装备，松开按键即停止。");
     // 按住绑定键开启模块、松开自动关闭（Meteor 标准 Hold 模式）
     toggleOnBindRelease = true;
 }
@@ -134,20 +131,48 @@ mc.player.setXRot(oldXRot);
 - 手持槽优先投掷。
 - 无经验瓶时的中文红色提示。
 
-## 5. 构建与验证命令
+## 5. PlayerAlarms 技术方案（需求 2，2026-08-08）
+
+### 5.1 模块定位
+
+由 `BetterPlayerAlarms` 与 xinplus 的 `PlayerNotifier` 合并而来，完整重命名为 `PlayerAlarms`。核心变化：**仅聊天彩色消息通知，删除全部响铃逻辑**。
+
+### 5.2 消息格式（默认模板）
+
+| 事件 | 默认模板 | 颜色 |
+|---|---|---|
+| 玩家加入 | `[+] {name}` | `ChatFormatting.GREEN` |
+| 玩家离开 | `[-] {name}` | `ChatFormatting.RED` |
+| 进入渲染距离 | `[+] {name} entered render distance` | `DARK_RED` |
+| 离开渲染距离 | `[-] {name} left render distance` | `DARK_GREEN` |
+| 游戏模式变更 | `{name} changed gamemode: {old_gamemode} -> {new_gamemode}` | `YELLOW` |
+
+### 5.3 关键实现
+
+- **UUID 玩家名缓存（PlayerNotifier 反查机制）**：`nameCache: Map<UUID, String>`。`ClientboundPlayerInfoRemovePacket`（玩家离开）只含 UUID 不含名字，因此在加入时（`ClientboundPlayerInfoUpdatePacket` ADD_PLAYER）缓存 `UUID -> name`，离开时反查；查不到再回退 `getPlayerName`（level 实体 → connection 网络信息）。
+- **事件处理**：
+  - 加入/离开/游戏模式变更：`PacketEvent.Receive` 监听 `ClientboundPlayerInfoUpdatePacket` / `ClientboundPlayerInfoRemovePacket`。
+  - 进出渲染距离：`TickEvent.Pre` 中比对 `mc.level.entitiesForRendering()` 前后集合（`playersInRender`）。
+  - 游戏模式变更：用 `mc.player.connection.getPlayerInfo(id).getGameMode()` 取旧模式与包内新模式比对。
+- **设置结构**：General 6 项（5 个事件开关 + show-gamemode-in-chat）+ 5 个事件组各 4 项（use-names-list / names / chat-message / chat-text），共 26 项。
+- **删除内容**：响铃设置（rings / ring-delay / volume / pitch / sound）、RingState 响铃调度、上线初始扫描（initialJoinCheckDone / alarmedJoinPlayers）、未用字段 playersSpottedRD。
+- **占位符**：`{name}`、`{gamemode}`（受 show-gamemode-in-chat 控制）、`{old_gamemode}`、`{new_gamemode}`。
+- **描述语言**：英文（Meteor 环境不允许中文）。
+
+## 6. 构建与验证命令
 
 ```bash
 ./gradlew build        # 编译并打包 mod jar
 ./gradlew runClient    # 启动客户端测试
 ```
 
-构建产物：`build/libs/XingduAddon-<version>.jar`
+构建产物：`build/libs/XinToolsAddon-<version>.jar`
 
-## 6. 注意事项
+## 7. 注意事项
 
 - 本项目使用 Mojang mappings，代码中为 `net.minecraft.*` 命名，勿使用 Yarn 命名。
-- 修改 mixin 后必须同步检查 `xingdu-addon.mixins.json` 引用。
-- 新增模块后必须在 `XingduAddon.onInitialize()` 中注册。
-- 包名统一为 `alsolate.xingdu.addon`，消息前缀统一 `[XingduAddon]`。
+- 修改 mixin 后必须同步检查 `xin-tools-addon.mixins.json` 引用。
+- 新增模块后必须在 `XinToolsAddon.onInitialize()` 中注册。
+- 包名统一为 `alsolate.xintools.addon`，消息前缀统一 `[XinToolsAddon]`。
 - 代码中注释沿用现有风格（中文注释说明逻辑，英文用于设置名/描述）。
 - 注意：用 PowerShell 写入 Java 文件时默认带 UTF-8 BOM，需使用无 BOM 编码，否则编译报"非法字符 \ufeff"。

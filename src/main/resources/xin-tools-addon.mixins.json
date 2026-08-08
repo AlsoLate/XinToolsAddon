@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "alsolate.xintools.addon.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinPlayerEntity",
+    "MixinClientPlayerEntity",
+    "MixinClientPlayNetworkHandler"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

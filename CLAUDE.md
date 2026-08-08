@@ -1,25 +1,24 @@
 # CLAUDE.md — AI 工作指引
 
-本文件是 XingduAddon 项目的 AI 协作指引。开始任何工作前，先阅读本文档。
+本文件是 XinToolsAddon 项目的 AI 协作指引。开始任何工作前，先阅读本文档。
 
 ## 项目简介
 
 - Fabric 1.21.11 的 Meteor Client addon（Mojang mappings，Java 21，Gradle + Fabric Loom）
-- 主类：`src/main/java/alsolate/xingdu/addon/XingduAddon.java`（注册所有模块）
-- 模块目录：`src/main/java/alsolate/xingdu/addon/modules/`
-- Mixin 目录：`src/main/java/alsolate/xingdu/addon/mixin/`
+- 主类：`src/main/java/alsolate/xintools/addon/XinToolsAddon.java`（注册所有模块）
+- 模块目录：`src/main/java/alsolate/xintools/addon/modules/`
+- Mixin 目录：`src/main/java/alsolate/xintools/addon/mixin/`
 - 作者：AlsoLate
-- 包名：`alsolate.xingdu.addon`
+- 包名：`alsolate.xintools.addon`
 
-## 保留模块（9个）
+## 保留模块（8个）
 
 | 模块 | 功能 | 来源 |
 |---|---|---|
 | Automend | 按住绑定键持续向下投掷经验瓶修复装备 | 原有 |
 | PacketEat | 通过发包实现无中断进食 | 原有 |
-| BetterPlayerAlarms | 玩家上线/下线/进入渲染距离/游戏模式变更报警 | 原有 |
+| PlayerAlarms | 玩家上线/下线/进入渲染距离/游戏模式变更聊天通知（仅消息，不响铃） | BetterPlayerAlarms 合并 PlayerNotifier |
 | XinQueue | 2b2t.xin 排队自动答题 | 原有 |
-| MeteorTextFix | 修复 Meteor 文本渲染兼容性问题 | 原有 |
 | BetterElytraFly | 鞘翅飞行控制增强 + 耐久过低自动换鞘翅 | WaveXin 迁入 |
 | SnifferNametags | 嗅探兽自定义名称标签显示 | WaveXin 迁入 |
 | AutoLogin | 2b2t.xin 自动登录/答题/签到/加入流程 | WaveXin 迁入 |
@@ -29,10 +28,9 @@
 
 - `core/`：WaveXinModule（模块基类）、WaveXinDataPaths、WaveXinSettingsStore、WaveXinSettingsAutoSaver、Timer
 - `events/`：Event、MoveEvent、TravelEvent（鞘翅飞行事件系统）
-- `i18n/`：WaveXinI18n（中英双语，语言文件在 `assets/xingdu/lang/`）
+- `i18n/`：WaveXinI18n（中英双语，语言文件在 `assets/xintools/lang/`）
 - `gui/`：WaveXinEnumDropdown（翻译枚举下拉框）
 - `mixin/`：MixinPlayerEntity、MixinClientPlayerEntity（移动/飞行事件）、MixinClientPlayNetworkHandler（标题/聊天文本事件）
-
 ## 标准文件路径指引（必读）
 
 | 用途 | 路径 |

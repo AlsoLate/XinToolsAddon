@@ -1,0 +1,241 @@
+package alsolate.xintools.addon.modules.basefinder;
+
+import alsolate.xintools.addon.i18n.WaveXinI18n;
+import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
+import meteordevelopment.meteorclient.gui.themes.meteor.MeteorGuiTheme;
+import meteordevelopment.meteorclient.gui.themes.meteor.MeteorWidget;
+import meteordevelopment.meteorclient.gui.utils.SettingsWidgetFactory;
+import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
+import meteordevelopment.meteorclient.gui.widgets.input.WDropdown;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
+import meteordevelopment.meteorclient.settings.IVisible;
+import meteordevelopment.meteorclient.settings.Setting;
+import meteordevelopment.meteorclient.utils.render.color.Color;
+import net.minecraft.nbt.CompoundTag;
+
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Consumer;
+
+public class XaeroWaypointColorSetting extends Setting<BaseFinder.XaeroWaypointColor> {
+    private final BaseFinder.XaeroWaypointColor[] values;
+
+    static {
+        SettingsWidgetFactory.registerCustomFactory(XaeroWaypointColorSetting.class, theme -> (table, setting) -> {
+            XaeroWaypointColorSetting colorSetting = (XaeroWaypointColorSetting) setting;
+
+            if (!(theme instanceof MeteorGuiTheme)) {
+                WDropdown<BaseFinder.XaeroWaypointColor> dropdown = table
+                    .add(theme.dropdown(colorSetting.values, colorSetting.get()))
+                    .expandCellX()
+                    .widget();
+                dropdown.action = () -> colorSetting.set(dropdown.get());
+
+                WButton reset = table.add(theme.button(GuiRenderer.RESET)).widget();
+                reset.action = () -> {
+                    colorSetting.reset();
+                    dropdown.set(colorSetting.get());
+                };
+                reset.tooltip = WaveXinI18n.tr("tooltip.wavexin.common.reset", "Reset");
+                return;
+            }
+
+            WColorDropdown dropdown = table
+                .add(new WColorDropdown(colorSetting.values, colorSetting.get()))
+                .expandCellX()
+                .widget();
+            dropdown.action = () -> colorSetting.set(dropdown.get());
+
+            WButton reset = table.add(theme.button(GuiRenderer.RESET)).widget();
+            reset.action = () -> {
+                colorSetting.reset();
+                dropdown.set(colorSetting.get());
+            };
+            reset.tooltip = WaveXinI18n.tr("tooltip.wavexin.common.reset", "Reset");
+        });
+    }
+
+    public XaeroWaypointColorSetting(
+        String name,
+        String description,
+        BaseFinder.XaeroWaypointColor defaultValue,
+        Consumer<BaseFinder.XaeroWaypointColor> onChanged,
+        Consumer<Setting<BaseFinder.XaeroWaypointColor>> onModuleActivated,
+        IVisible visible
+    ) {
+        super(name, description, defaultValue, onChanged, onModuleActivated, visible);
+        values = BaseFinder.XaeroWaypointColor.values();
+    }
+
+    private static final Map<String, BaseFinder.XaeroWaypointColor> LEGACY_ALIASES = Map.ofEntries(
+        Map.entry("orange", BaseFinder.XaeroWaypointColor.GOLD),
+        Map.entry("lime", BaseFinder.XaeroWaypointColor.GREEN),
+        Map.entry("cyan", BaseFinder.XaeroWaypointColor.DARK_AQUA),
+        Map.entry("light blue", BaseFinder.XaeroWaypointColor.AQUA),
+        Map.entry("magenta", BaseFinder.XaeroWaypointColor.PURPLE),
+        Map.entry("pink", BaseFinder.XaeroWaypointColor.PURPLE),
+        Map.entry("light gray", BaseFinder.XaeroWaypointColor.GRAY),
+        Map.entry("brown", BaseFinder.XaeroWaypointColor.GOLD)
+    );
+
+    @Override
+    protected BaseFinder.XaeroWaypointColor parseImpl(String str) {
+        if (str == null) return null;
+        String normalized = str.trim();
+        for (BaseFinder.XaeroWaypointColor value : values) {
+            if (normalized.equalsIgnoreCase(value.name())
+                || normalized.equalsIgnoreCase(value.toString())
+                || normalized.equalsIgnoreCase(label(value))) return value;
+        }
+        return LEGACY_ALIASES.get(normalized.toLowerCase(Locale.ROOT).replace('_', ' '));
+    }
+
+    @Override
+    protected boolean isValueValid(BaseFinder.XaeroWaypointColor value) {
+        return value != null;
+    }
+
+    @Override
+    public java.util.List<String> getSuggestions() {
+        java.util.List<String> current = new java.util.ArrayList<>(values.length);
+        for (BaseFinder.XaeroWaypointColor value : values) current.add(label(value));
+        return current;
+    }
+
+    @Override
+    protected CompoundTag save(CompoundTag tag) {
+        tag.putString("value", get().name());
+        return tag;
+    }
+
+    @Override
+    protected BaseFinder.XaeroWaypointColor load(CompoundTag tag) {
+        parse(tag.getStringOr("value", ""));
+        return get();
+    }
+
+    public static class Builder extends SettingBuilder<Builder, BaseFinder.XaeroWaypointColor, XaeroWaypointColorSetting> {
+        public Builder() {
+            super(null);
+        }
+
+        @Override
+        public XaeroWaypointColorSetting build() {
+            return new XaeroWaypointColorSetting(name, description, defaultValue, onChanged, onModuleActivated, visible);
+        }
+    }
+
+    private static String label(BaseFinder.XaeroWaypointColor value) {
+        if (value == null) return "";
+        return WaveXinI18n.tr(
+            "enum.wavexin.xaero_waypoint_color." + WaveXinI18n.keySegment(value.name()),
+            value.toString()
+        );
+    }
+
+    private static class WColorDropdown extends WDropdown<BaseFinder.XaeroWaypointColor> implements MeteorWidget {
+        public WColorDropdown(BaseFinder.XaeroWaypointColor[] values, BaseFinder.XaeroWaypointColor value) {
+            super(values, value);
+        }
+
+        @Override
+        protected WDropdownRoot createRootWidget() {
+            return new WRoot();
+        }
+
+        @Override
+        protected WDropdownValue createValueWidget() {
+            return new WValue();
+        }
+
+        @Override
+        protected void onCalculateSize() {
+            double pad = pad();
+
+            maxValueWidth = 0;
+            for (BaseFinder.XaeroWaypointColor value : values) {
+                maxValueWidth = Math.max(maxValueWidth, theme.textWidth(label(value)));
+            }
+
+            root.calculateSize();
+
+            width = pad + maxValueWidth + pad + theme.textHeight() + pad;
+            height = pad + theme.textHeight() + pad;
+            root.width = width;
+        }
+
+        @Override
+        protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
+            MeteorGuiTheme theme = theme();
+            double pad = pad();
+            double size = theme.textHeight();
+
+            renderBackground(renderer, this, pressed, mouseOver);
+
+            BaseFinder.XaeroWaypointColor selected = get();
+            String text = label(selected);
+            double textWidth = theme.textWidth(text);
+            Color textColor = selected == null ? theme.textColor.get() : selected.displayColor();
+
+            renderer.text(
+                text,
+                x + pad + maxValueWidth / 2 - textWidth / 2,
+                y + pad,
+                textColor,
+                false
+            );
+            renderer.rotatedQuad(
+                x + pad + maxValueWidth + pad,
+                y + pad,
+                size,
+                size,
+                0,
+                GuiRenderer.TRIANGLE,
+                theme.textColor.get()
+            );
+        }
+
+        private static class WRoot extends WDropdownRoot implements MeteorWidget {
+            @Override
+            protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
+                MeteorGuiTheme theme = theme();
+                double size = theme.scale(2);
+                Color color = theme.outlineColor.get();
+
+                renderer.quad(x, y + height - size, width, size, color);
+                renderer.quad(x, y, size, height - size, color);
+                renderer.quad(x + width - size, y, size, height - size, color);
+            }
+        }
+
+        private class WValue extends WDropdownValue implements MeteorWidget {
+            @Override
+            protected void onCalculateSize() {
+                double pad = pad();
+                width = pad + theme.textWidth(label(value)) + pad;
+                height = pad + theme.textHeight() + pad;
+            }
+
+            @Override
+            protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
+                MeteorGuiTheme theme = theme();
+                Color background = theme.backgroundColor.get(pressed, mouseOver, true);
+                int alpha = background.a;
+                background.a += background.a / 2;
+                background.validate();
+                renderer.quad(this, background);
+                background.a = alpha;
+
+                String text = label(value);
+                Color textColor = value == null ? theme.textColor.get() : value.displayColor();
+                renderer.text(
+                    text,
+                    x + width / 2 - theme.textWidth(text) / 2,
+                    y + pad(),
+                    textColor,
+                    false
+                );
+            }
+        }
+    }
+}

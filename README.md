@@ -1,8 +1,8 @@
-# XingduAddon
+# XinToolsAddon
 
 A minecraft 1.21.11 meteor client addon which added some features for servers like 2b2t.xin.
 
-![ICON_BIG](https://github.com/AlsoLate/XingduAddon/blob/main/src/main/resources/assets/xingdu/icon_big.png?raw=true)
+![ICON_BIG](https://github.com/AlsoLate/XinToolsAddon/blob/main/src/main/resources/assets/xintools/icon_big.png?raw=true)
 
 ## Modules
 
@@ -10,9 +10,8 @@ A minecraft 1.21.11 meteor client addon which added some features for servers li
 |---|---|
 | Automend | Hold the bound key to throw XP bottles straight down to repair equipment; release to stop. |
 | PacketEat | Eat without interruption by sending packets to the server. |
-| BetterPlayerAlarms | Enhanced player alarms: join/leave server, enter/leave render distance, gamemode changes. |
+| PlayerAlarms | Chat notifications for join/leave server, enter/leave render distance, gamemode changes (no sound). |
 | XinQueue | Automatically answer questions when queueing in 2b2t.xin. |
-| MeteorTextFix | Overrides Meteor's text rendering behavior to fix compatibility issues. |
 | BetterElytraFly | Improved elytra flight control with automatic elytra replacement. |
 | SnifferNametags | Displays custom nametags for sniffer entities. |
 | AutoLogin | Automates 2b2t.xin login, quiz, check-in, and join flows. |
@@ -24,4 +23,4 @@ A minecraft 1.21.11 meteor client addon which added some features for servers li
 ./gradlew build
 ```
 
-Built jar: `build/libs/XingduAddon-<version>.jar`
+Built jar: `build/libs/XinToolsAddon-<version>.jar`

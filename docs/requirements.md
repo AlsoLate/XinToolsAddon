@@ -1,10 +1,10 @@
-# XingduAddon 开发需求文档
+# XinToolsAddon 开发需求文档
 
 > 本文档用于记录项目所有已确认的功能需求。新增需求必须先经沟通确认后写入本文档，再进入开发。
 
 ## 项目概述
 
-- 项目：XingduAddon（Meteor Client addon）
+- 项目：XinToolsAddon（Meteor Client addon）
 - 平台：Fabric 1.21.11
 - 用途：为 2b2t.xin 等服务器提供辅助功能
 - 需求状态标记：`✅ 已确认` / `🔄 开发中` / `⏳ 待开发` / `❌ 已取消`
@@ -44,7 +44,7 @@
 
 ### 验收标准
 
-1. 模块在游戏内显示名为 `Automend`，位于 Xingdu 分类。
+1. 模块在游戏内显示名为 `Automend`，位于 XinTools 分类。
 2. 在模块 Bind 区块绑定按键后，**按住该键持续向下投掷经验瓶；松开立即停止（模块自动关闭）**。
 3. 背包无经验瓶时中文提示一次并暂停，松开按键后可重新触发。
 4. 未绑定按键开启模块 → 聊天栏中文红色提示（不强制关闭）。
@@ -53,8 +53,123 @@
 
 ### 涉及文件
 
-- `src/main/java/alsolate/xingdu/addon/modules/Automend.java`
-- `src/main/java/alsolate/xingdu/addon/XingduAddon.java`（模块注册处）
+- `src/main/java/alsolate/xintools/addon/modules/Automend.java`
+- `src/main/java/alsolate/xintools/addon/XinToolsAddon.java`（模块注册处）
+
+---
+
+## 需求 2：PlayerAlarms 模块（BetterPlayerAlarms 合并 PlayerNotifier）
+
+### 状态
+
+`✅ 已完成`（2026-08-08 与用户多轮沟通确认细节，确认后开发）
+
+### 背景
+
+XinToolsAddon 中的 `BetterPlayerAlarms` 与 xinplus 子项目中的 `PlayerNotifier` 功能重叠（均监控玩家上下线）。用户希望将两者合并为单一模块，采用 PlayerNotifier 的简洁通知风格（仅聊天消息、不响铃），并完整重命名为 `PlayerAlarms`。
+
+### 需求目标
+
+1. 将模块完整重命名为 `PlayerAlarms`（文件、类名、模块显示名全部变更）。
+2. 逻辑吸收 PlayerNotifier 的轻量风格：**仅聊天彩色消息通知，不响铃**。
+3. 保留全部事件：玩家加入/离开服务器、进入/离开渲染距离、游戏模式变更。
+4. 移除响铃相关设置（约 15 项）。
+5. xinplus 子项目完全不动（PlayerNotifier 保留）。
+
+### 已确认的需求细节（2026-08-08 与用户确认）
+
+| 项目 | 结论 |
+|---|---|
+| 模块最终名 | **PlayerAlarms**（文件、类名、模块显示名完整重命名） |
+| 保留事件 | 全部：加入/离开服务器、进入/离开渲染距离、游戏模式变更 |
+| 通知方式 | **仅聊天彩色消息，不响铃**（PlayerNotifier 风格） |
+| 消息格式 | **`[+]` / `[-]` 风格**（绿色加号加入、红色减号离开） |
+| 保留设置 | 5 个事件开关 + 名单过滤（use-names-list/names）+ 聊天文本（chat-message/chat-text） |
+| 删除设置 | 全部响铃相关设置（rings / ring-delay / volume / pitch / sound，约 15 项） |
+| 上线扫描 | **不保留**（开模块时不通知已在线玩家） |
+| 描述语言 | 英文（Meteor 环境不允许中文） |
+| xinplus | **完全不动** |
+
+### 各事件默认消息模板（可通过 chat-text 设置自定义）
+
+| 事件 | 默认模板 | 颜色 |
+|---|---|---|
+| 玩家加入 | `[+] {name}` | 绿色 |
+| 玩家离开 | `[-] {name}` | 红色 |
+| 进入渲染距离 | `[+] {name} entered render distance` | 深红 |
+| 离开渲染距离 | `[-] {name} left render distance` | 深绿 |
+| 游戏模式变更 | `{name} changed gamemode: {old_gamemode} -> {new_gamemode}` | 黄色 |
+
+### 验收标准
+
+1. 游戏内显示名为 `PlayerAlarms`，位于 XinTools 分类。
+2. 加入/离开/进出渲染距离/游戏模式变更均只发彩色聊天消息，不响铃。
+3. 无任何响铃设置残留；默认消息为 `[+]` / `[-]` 风格。
+4. 项目中无 `BetterPlayerAlarms` 残留引用。
+5. `./gradlew build` 编译通过。
+6. xinplus 子项目未做任何改动。
+
+### 涉及文件
+
+- `src/main/java/alsolate/xintools/addon/modules/PlayerAlarms.java`
+- `src/main/java/alsolate/xintools/addon/XinToolsAddon.java`（模块注册处）
+
+---
+
+## 需求 3：项目全量重命名为 XinToolsAddon
+
+### 状态
+
+`✅ 已完成`（2026-08-08 与用户多轮沟通确认细节，确认后开发）
+
+### 背景
+
+旧项目名 `XingduAddon` 中英杂糀，不够简短直接。用户希望全量重命名以更贴目标服务器 2b2t.xin 的工具集定位。
+
+### 需求目标
+
+1. **项目名**：`XingduAddon` → **`XinToolsAddon`**（GitHub 仓库 `AlsoLate/XinToolsAddon`）
+2. **包名**：`alsolate.xingdu.addon` → `alsolate.xintools.addon`
+3. **主类**：`XingduAddon` → `XinToolsAddon`（文件/类名/Category 文本同步：`Xingdu` → `XinTools`）
+4. **资源目录**：`assets/xingdu/` → `assets/xintools/`
+5. **全量重命名**：包名、主类、资源目录、Gradle 配置、fabric.mod.json、mixins.json、lang 路径、HTML 说明书、开发日志等全部同步
+6. **GitHub 仓库改名**：通过 `gh repo rename` 命令手动执行
+
+### 已确认的需求细节（2026-08-08 与用户确认）
+
+| 项目 | 结论 |
+|---|---|
+| 新项目名 | **XinToolsAddon** |
+| GitHub 仓库 | `AlsoLate/XinToolsAddon`（手动执行 `gh repo rename`） |
+| 新包名 | `alsolate.xintools.addon` |
+| 新主类 | `XinToolsAddon`（Category 文本：`XinTools`） |
+| 资源目录 | `assets/xintools/` |
+| Gradle | `archives_base_name=XinToolsAddon`、`maven_group=alsolate.xintools`、`rootProject.name=XinToolsAddon` |
+| 范围 | **全量重命名**（项目名/包名/主类/资源目录/资产/lang/HTML 说明书/开发日志） |
+| xinplus | **完全不动** |
+
+### 验收标准
+
+1. 根目录 `settings.gradle.kts` 中 `rootProject.name = "XinToolsAddon"`。
+2. `gradle.properties` 中 `archives_base_name=XinToolsAddon`、`maven_group=alsolate.xintools`。
+3. `src/main/resources/fabric.mod.json` 中 `id=name=xin-tools-addon`、`name=XinToolsAddon`、entrypoint 指向 `alsolate.xintools.addon.XinToolsAddon`。
+4. `src/main/resources/xin-tools-addon.mixins.json` 同步重命名。
+5. `src/main/java/alsolate/xintools/addon/` 包路径下所有 Java 文件无 `xingdu` 残留。
+6. `src/main/resources/assets/xintools/lang/en_us.json`、`zh_cn.json` 路径正确。
+7. `./gradlew build` 编译通过，产物 jar 名为 `XinToolsAddon-<version>.jar`。
+8. 文档（README/CLAUDE/technical/roadmap/HTML 说明书/开发日志）全部同步。
+9. `gh repo rename XingduAddon XinToolsAddon` 命令在用户执行后，仓库 URL 变为 `https://github.com/AlsoLate/XinToolsAddon`（保留为变更记录，不重复执行）。
+
+### 涉及文件
+
+- 全部 `src/main/java/alsolate/xintools/addon/` Java 文件
+- `src/main/resources/fabric.mod.json`
+- `src/main/resources/xingdu-addon.mixins.json` → `xin-tools-addon.mixins.json`
+- `src/main/resources/assets/xingdu/` → `src/main/resources/assets/xintools/`
+- `gradle.properties`、`settings.gradle.kts`、`build.gradle.kts`
+- `README.md`、`CLAUDE.md`、`docs/` 全部文档
+- `xintools-addon-guide/` 整个 HTML 说明书目录
+- `dev-log/` 日志（追加新日志，历史日志保留原名作为变更记录）
 
 ---
 

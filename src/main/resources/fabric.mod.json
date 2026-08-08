@@ -1,24 +1,24 @@
 {
   "schemaVersion": 1,
-  "id": "xingdu-addon",
+  "id": "xin-tools-addon",
   "version": "${version}",
-  "name": "XingduAddon",
+  "name": "XinToolsAddon",
   "description": "An addon for Meteor Client which added some features for servers like 2b2t.xin",
   "authors": [
     "AlsoLate"
   ],
   "contact": {
-    "sources": "https://github.com/AlsoLate/XingduAddon"
+    "sources": "https://github.com/AlsoLate/XinToolsAddon"
   },
-  "icon": "assets/xingdu/icon.png",
+  "icon": "assets/xintools/icon.png",
   "environment": "client",
   "entrypoints": {
     "meteor": [
-      "alsolate.xingdu.addon.XingduAddon"
+      "alsolate.xintools.addon.XinToolsAddon"
     ]
   },
   "mixins": [
-    "xingdu-addon.mixins.json"
+    "xin-tools-addon.mixins.json"
   ],
   "custom": {
     "meteor-client:color": "100,180,255",

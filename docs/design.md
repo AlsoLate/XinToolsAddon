@@ -1,4 +1,4 @@
-# XingduAddon 设计规范
+# XinToolsAddon 设计规范
 
 > 项目代码与文档的统一规范。所有开发工作必须遵守。
 
@@ -16,7 +16,7 @@
 
 ## 2. 模块设计规范
 
-- 所有模块继承 `Module`，注册到 `XingduAddon.CATEGORY`。
+- 所有模块继承 `Module`，注册到 `XinToolsAddon.CATEGORY`。
 - 设置必须分组：常用设置放入 `settings.getDefaultGroup()`。
 - 每个设置必须有 `name` 与 `description`，名称简洁、描述说明行为。
 - 模块构造函数的描述参数需说明触发方式（如 "auto mend when you hold R"）。
@@ -32,7 +32,7 @@
 ## 4. 日志规范
 
 - 模块功能相关提示使用 `ChatUtils.sendMsg()`，重要错误用红色 `ChatFormatting.RED`。
-- 消息前缀统一 `[XingduAddon]` + 模块名。
+- 消息前缀统一 `[XinToolsAddon]` + 模块名。
 
 ## 5. 文档规范
 

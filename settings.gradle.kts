@@ -9,4 +9,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "XingduAddon"
+rootProject.name = "XinToolsAddon"
