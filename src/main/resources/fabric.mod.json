@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "xin-tools-addon",
+  "version": "${version}",
+  "name": "XinToolsAddon",
+  "description": "An addon for Meteor Client which added some features for servers like 2b2t.xin",
+  "authors": [
+    "AlsoLate"
+  ],
+  "contact": {
+    "sources": "https://github.com/AlsoLate/XinToolsAddon"
+  },
+  "icon": "assets/xintools/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "alsolate.xintools.addon.XinToolsAddon"
+    ]
+  },
+  "mixins": [
+    "xin-tools-addon.mixins.json"
+  ],
+  "custom": {
+    "meteor-client:color": "100,180,255",
+    "modmenu": {
+      "parent": {
+        "id": "meteor-client"
+      }
+    }
+  },
+  "depends": {
+    "java": ">=21",
+    "minecraft": ["${mc_version}"],
+    "meteor-client": "*"
+  }
+}

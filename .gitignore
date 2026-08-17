@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+.gradle-local/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Temp
+.tmp-meteor-src/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Java
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Minecraft
+run/
+logs/
+crash-reports/
+
+# Environment
+.env
+*.log
