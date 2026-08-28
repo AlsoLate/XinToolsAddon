@@ -1,5 +1,5 @@
 # XinToolsAddon
-这是一个适用于Minecraft 1.21.11，Fabric 0.19.3，MeteorClient-1.21.11-86的MeteorAddon，专门为中国2B2T服务器2b2t.xin设计，目前项目推进了两个版本，共有两名开发者参与编写。
+这是一个适用于Java21，Minecraft 1.21.11，Fabric 0.19.3，MeteorClient-1.21.11-86的MeteorAddon，专门为中国2B2T服务器2b2t.xin设计，目前项目推进了两个版本，共有两名开发者参与编写。
 目前已知问题如下，预计会在2026年国庆节左右更新下一版本，并尽量解决下面的问题：
 自动排队答题无法使用（进度100%）
 翻译质量过低（进度40%）
