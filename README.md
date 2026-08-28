@@ -120,6 +120,15 @@ src/main/resources/
 - 与用户沟通模块时优先用 **中文名**，改文件时对照 `zh_cn.json` 的真实 key。
 
 ---
+## 参考和借鉴了以下项目：
+
+- https://github.com/liuliuliu0127/DonkeySpawnerAddon
+- https://github.com/WaltomAdaam2/WaveXinAddon
+- https://github.com/Rgxaa/InvincibleMachineGun
+- https://github.com/JuusK/MeteorExtras
+- https://github.com/MeteorClientPlus/MeteorPlus
+移植了以上的其中一些功能，然后做了增强，感谢以上作者
+---
 
 ## 许可证
 使用MIT
