@@ -1,6 +1,14 @@
 # XinToolsAddon
-
-Meteor Client 附加模组（Fabric），目标版本 **Minecraft 1.21.11**。
+这是一个适用于Minecraft 1.21.11，Fabric 0.19.3，MeteorClient-1.21.11-86的MeteorAddon，专门为中国2B2T服务器2b2t.xin设计，目前项目推进了两个版本，共有两名开发者参与编写。
+目前已知问题如下，预计会在2026年国庆节左右更新下一版本，并尽量解决下面的问题：
+自动排队答题无法使用（进度100%）
+翻译质量过低（进度40%）
+快速经验瓶的Auto模式不稳定（进度10%）
+鞘翅飞行为固定速度（已有变速逻辑解决方案）
+发包进食疑似存在卡金苹果吃不进去（还在排查问题）
+嗅探兽名称标签分散（会重写）
+基地狩猎扫图（已有新高质量找基地逻辑，会重写）
+欢迎Pr和Issues，本项目长期更新，作者QQ3958426615
 
 包名：`alsolate.xintools.addon`  
 分类：游戏内模块分类 **XinTools**
@@ -26,8 +34,6 @@ Meteor Client 附加模组（Fabric），目标版本 **Minecraft 1.21.11**。
 | PlayerAlarms | 玩家警报 | 加入/离开/视距/模式变更提醒 |
 | ElytaFly+ | 鞘翅飞行+ | 额外鞘翅控制模式 |
 | SnifferNameTags | 嗅探兽名称标签 | 嗅探兽自定义名牌 |
-
-已移除：`Automend`（并入 FastXP Auto）、`MeteorTextFix`（文字渲染修复常开，不随 i18n 开关）。
 
 ---
 
@@ -57,7 +63,7 @@ Meteor Client 附加模组（Fabric），目标版本 **Minecraft 1.21.11**。
    - Meteor / 第三方模块标题与设置走 `assets/xintools/lang/meteor_zh_cn.json`
    - XinTools 模块走 `assets/xintools/lang/zh_cn.json`（**不依赖** Minecraft 语言是否为中文）
    - Config / HUD / Macros / Profiles / Baritone(PathManager) 的 Setting 一并翻译
-   - 设置分组名：`General`→基础设置，`Control`→控制，`Bind`→绑定 等
+   - 设置分组名：`General`→基础设置，`Control`→控制，`Bind`→绑定 等（此项仍有问题，无法完成翻译）
 3. 关闭后硬还原为构造时英文原文；GUI 会自动重开当前 Tab。
 4. 原版文字渲染**始终强制**（避免中文字变成空白），与 i18n 开关解耦。
 
@@ -82,7 +88,7 @@ Meteor Client 附加模组（Fabric），目标版本 **Minecraft 1.21.11**。
 
 ---
 
-## 目录结构（开发用）
+## 目录结构（仅供参考，请以实际为准）
 
 ```
 src/main/java/alsolate/xintools/addon/
@@ -108,14 +114,13 @@ src/main/resources/
 ## 已知行为 / 注意
 
 - **FastXP** 默认旋转模式为 **Silent**；Auto 模式只在带经验修补的装备低于阈值时向下投掷经验瓶。
-- **自动登录** 已去掉答题；每日功能为小红花点击并领取余额奖励，排队题用 **自动排队答题**。
-- **统计信息** 文字/背景坐标 slider 最大 **8000**。
-- 模块设置界面 Esc 退出时尽量保持鼠标位置（`ModuleScreenCursorMixin`）。
+- **自动登录** 无答题；每日功能为小红花点击并领取余额奖励。（存在问题）
+- 模块设置界面 Esc 退出时尽量保持鼠标位置（`ModuleScreenCursorMixin`）。（存在问题，不生效）
 - Mojang 映射：`Minecraft.rightClickDelay`（不要用旧名 `itemUseTicks`）。
 - 与用户沟通模块时优先用 **中文名**，改文件时对照 `zh_cn.json` 的真实 key。
 
 ---
 
 ## 许可证
-
-见仓库根目录 `LICENSE`（若存在）。
+使用MIT
+见仓库根目录 `LICENSE`
